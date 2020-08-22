@@ -1,0 +1,2 @@
+# ReceiptIT
+Ticket Scanner

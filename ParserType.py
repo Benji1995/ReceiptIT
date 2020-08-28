@@ -1,28 +1,17 @@
 #####################################
 #### Receipt Parser: Colruyt Receipts
-# Created by: Benjamin
+# Created by: Benjamin Bernaerdts
 # Date: 7/25/2020
 #####################################
+
 import cv2
 import imutils
 import os
 import numpy as np
 import pytesseract
-from matplotlib import pyplot as plt
-import pytesseract
+import matplotlib.pyplot as plt
 
-pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files (x86)\\Tesseract-OCR\\tesseract.exe'
-
-
-def showImage(img, width=0, height=0):
-    if width != 0 and height == 0:
-        cv2.imshow("Image..", imutils.resize(img, width=width))
-    elif width == 0 and height != 0:
-        cv2.imshow("Image..", imutils.resize(img, height=height))
-    elif width != 0 and height != 0:
-        cv2.imshow("Image..", imutils.resize(img, width=width, height=height))
-    else:
-        cv2.imshow("Image..", img)
+pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Benjamin\\AppData\\Local\\Tesseract-OCR\\tesseract.exe'
 
 
 # Gen_parser GodClass
@@ -31,13 +20,15 @@ class Gen_parser:
         self.img = img
         self.img_temp = None
         self.img_prog = None
-        self.img_Name = name.split("/")[1]
+        self.img_Name = name
         self.img_Width = self.img.shape[1]
         self.img_Height = self.img.shape[0]
         self.templatePath = "Templates/"
 
-    def getDimensions(self):
-        print("Image \"{}\" has dimensions: {} x {} pixels".format(self.img_Name, self.img_Width, self.img_Height))
+        self.main()
+
+    def main(self):
+        pass
 
 
 # Colruyt Parser
@@ -49,57 +40,26 @@ class Colruyt_parser(Gen_parser):
         for t in os.listdir(self.templatePath.split("/")[0]):
             if self.store in t:
                 self.img_temp = cv2.imread(self.templatePath + t)
-        self.main()
 
     def main(self):
-        self.img_prog = self.img
-        img1 = cv2.cvtColor(self.img_prog, cv2.COLOR_BGR2GRAY)
+        img1 = self.img
         img2 = self.img_temp  # cv2.cvtColor(self.img_temp,cv2.COLOR_BGR2GRAY)
 
-        test = img1
+        _, mask = cv2.threshold(img1, 120, 255, cv2.THRESH_BINARY_INV)
 
-        edges = cv2.Canny(test, 50, 150, apertureSize=3)
-        kernel_size = 2
-        kernel = np.ones((kernel_size, kernel_size), np.uint8)
-        edges = openFilter(edges, 3, 1, 1)
-        showImage(edges)
+        kernal = np.ones((5, 5), np.uint8)
+
+        mg = cv2.morphologyEx(mask, cv2.MORPH_BLACKHAT, kernal)
+        mth = cv2.morphologyEx(mask, cv2.MORPH_TOPHAT, kernal)
+
+        showImage(mth, "Gradien")
+        showImage(mask, "Mask")
+        showImage(img1, "Image")
+
+        print(pytesseract.image_to_string(mask))
+        # showImage(edges, "edges")
         cv2.waitKey()
         cv2.destroyAllWindows()
-        # lines = cv2.HoughLinesP(edges, 0.02, np.pi / 500, 10, minLineLength=40, maxLineGap=2)
-        lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
-
-        for line in lines:
-            rho, theta = line[0]
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-
-            x1 = int(x0 + 1000 * (-b))
-            y1 = int(y0 + 1000 * (a))
-
-            x2 = int(x0 - 1000 * (-b))
-            y2 = int(y0 + 1000 * (a))
-            cv2.line(test, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-            test = cv2.cvtColor(test, cv2.COLOR_BGR2RGB)
-
-        print(len(lines))
-
-        titles = ["Edged", "Lines"]
-        imges = [cv2.cvtColor(edges, cv2.COLOR_BGR2RGB), cv2.cvtColor(test, cv2.COLOR_BGR2RGB)]
-
-        for i in range(2):
-            plt.subplot(1, 2, i + 1), plt.imshow(imges[i])
-            plt.title(titles[i])
-
-        plt.show()
-
-    def showProgress(self):
-        try:
-            showImage(self.img_prog)
-        except:
-            print("No modification has been done yet.")
 
 
 def openFilter(img, kernel_size, it_dil, it_er):
@@ -116,3 +76,49 @@ def closeFilter(img, kernel_size, it_dil, it_er):
     img = cv2.dilate(img, kernel, iterations=it_dil)
 
     return img
+
+
+def showImage(img, img_name, width=0, height=0):
+    if width != 0 and height == 0:
+        cv2.imshow(img_name, imutils.resize(img, width=width))
+    elif width == 0 and height != 0:
+        cv2.imshow(img_name, imutils.resize(img, height=height))
+    elif width != 0 and height != 0:
+        cv2.imshow(img_name, imutils.resize(img, width=width, height=height))
+    else:
+        cv2.imshow(img_name, img)
+
+
+def getLines(edges):
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
+    # for rho, theta in lines[0]:
+    #     a = np.cos(theta)
+    #     b = np.sin(theta)
+    #     x0 = a * rho
+    #     y0 = b * rho
+    #     x1 = int(x0 + 1000 * (-b))
+    #     y1 = int(y0 + 1000 * (a))
+    #     x2 = int(x0 - 1000 * (-b))
+    #     y2 = int(y0 - 1000 * (a))
+
+    # cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+    return lines
+
+
+def getLinesP(edges, theta, threshold, minLineLength, maxLineGap):
+    showImage(edges, "Edges")
+    lines = cv2.HoughLinesP(edges, 1, theta, threshold, minLineLength, maxLineGap)
+    # for x1, y1, x2, y2 in lines[0]:
+    # cv2.line(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    return lines
+
+
+def getStoreName(img,kernel,dil_it,erode_it):
+    kernel_dim = kernel
+    kernel = np.ones((kernel_dim, kernel_dim), np.uint8)
+    img = cv2.dilate(img, kernel, iterations=dil_it)
+    img = cv2.erode(img, kernel, iterations=erode_it)
+
+    return pytesseract.image_to_string(img)
+    ##de kernel dimensie en de iteration settings zijn ideaal voor een colruyt ticket, enkel colruyt eraf te lezen, moet nog getest worden op andere tickets

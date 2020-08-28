@@ -2,25 +2,26 @@
 # python scan.py --image images/page.jpg
 
 # import the necessary packages
+import difflib
+import re
 import ParserType
-from pyimagesearch.transform import four_point_transform
-from skimage.filters import threshold_local
-import numpy as np
-import argparse
-import cv2
-import imutils
 from ParserType import *
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", required = True,
-	help = "Hier komt het pad naar uw foto")
-args = vars(ap.parse_args())
+#
+stores = ["Colruyt","Delhaize","Aldi","Lidl","Albert Heijn","Jumbo","Spar","Carrefour","Carrefour Express"]
 
 # load the image and compute the ratio of the old height
 # to the new height, clone it, and resize it
-image = cv2.imread(args["image"])
-image_name = args["image"]
+image = cv2.imread("./images/receipt.jpg")
 
-cp = ParserType.Colruyt_parser(image_name, image)
+try:
+    store_name = difflib.get_close_matches(ParserType.getStoreName(image,4,2,1),stores)[0]
+except IndexError:
+    store_name = ParserType.getStoreName(image,4,2,1)
+    if not store_name in stores:
+        store_name = re.sub(r'[^\w]', ' ', store_name)
+        store_name = " ".join(store_name.split())
+        stores.append(store_name)
 
+print(stores)
+#cp = ParserType.Colruyt_parser(image_name, image)

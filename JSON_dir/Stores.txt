@@ -1,0 +1,1 @@
+{"Colruyt": null, "Delhaize": null, "Aldi": null, "Lidl": null, "Albert Heijn": null, "Jumbo": null, "Spar": null, "Carrefour": null, "Carrefour Express": null, "WHOLE FOODS": null}

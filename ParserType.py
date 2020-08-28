@@ -9,7 +9,11 @@ import imutils
 import os
 import numpy as np
 import pytesseract
+import re
 import matplotlib.pyplot as plt
+import json
+import difflib
+from JSON_script import *
 
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Benjamin\\AppData\\Local\\Tesseract-OCR\\tesseract.exe'
 
@@ -114,7 +118,7 @@ def getLinesP(edges, theta, threshold, minLineLength, maxLineGap):
     return lines
 
 
-def getStoreName(img,kernel,dil_it,erode_it):
+def getStoreNameFromPic(img, kernel, dil_it, erode_it):
     kernel_dim = kernel
     kernel = np.ones((kernel_dim, kernel_dim), np.uint8)
     img = cv2.dilate(img, kernel, iterations=dil_it)
@@ -122,3 +126,18 @@ def getStoreName(img,kernel,dil_it,erode_it):
 
     return pytesseract.image_to_string(img)
     ##de kernel dimensie en de iteration settings zijn ideaal voor een colruyt ticket, enkel colruyt eraf te lezen, moet nog getest worden op andere tickets
+
+
+def getName(image):
+    stores = getStores()[1]
+    try:
+        store_name = difflib.get_close_matches(getStoreNameFromPic(image, 4, 2, 1), stores)[0]
+    except IndexError:
+        store_name = getStoreNameFromPic(image, 4, 2, 1)
+        if not store_name in stores:
+            store_name = re.sub(r'[^\w]', ' ', store_name)
+            store_name = " ".join(store_name.split())
+            addStore(store_name)
+
+    return store_name
+

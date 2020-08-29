@@ -15,7 +15,8 @@ import numpy as np
 import cv2
 import imutils
 
-pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Benjamin\\AppData\\Local\\Tesseract-OCR\\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\b.bernaerdts\\AppData\\Local\\Tesseract-OCR\\tesseract.exe'
+#pytesseract.pytesseract.tesseract_cmd =
 
 
 # Gen_parser GodClass

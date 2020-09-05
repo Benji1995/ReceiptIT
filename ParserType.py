@@ -47,24 +47,20 @@ class Colruyt_parser(Gen_parser):
                 self.img_temp = cv2.imread(self.templatePath + t)
 
     def main(self):
-        img1 = self.img
+        img = self.img
         img2 = self.img_temp  # cv2.cvtColor(self.img_temp,cv2.COLOR_BGR2GRAY)
 
-        _, mask = cv2.threshold(img1, 120, 255, cv2.THRESH_BINARY_INV)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        edge = cv2.Canny(gray,25,200)
 
-        kernal = np.ones((5, 5), np.uint8)
+        img,lines = getLinesP(img,edge)
+        print(len(lines))
 
-        mg = cv2.morphologyEx(mask, cv2.MORPH_BLACKHAT, kernal)
-        mth = cv2.morphologyEx(mask, cv2.MORPH_TOPHAT, kernal)
+        showImage(img, "Progress")
+        showImage(edge, "Edge",height=800)
+        showImage(gray, "gray")
 
-        h = 1000
-        showImage(mth, "Gradien",height=h)
-        showImage(mask, "Mask",height=h)
-        showImage(img1, "Image",height=h)
-
-        print(pytesseract.image_to_string(mask))
-        # showImage(edges, "edges")
-        cv2.waitKey()
+        cv2.waitKey(0)
         cv2.destroyAllWindows()
 
 
@@ -133,8 +129,8 @@ class rectangle_parser(Gen_parser):
         warped = (warped > T).astype("uint8") * 255
 
         # show the original and scanned images
-        print("STEP 3: Apply perspective transform")
-        cv2.imshow("Original", imutils.resize(orig, height=650))
+        #print("STEP 3: Apply perspective transform")
+        #cv2.imshow("Original", imutils.resize(orig, height=650))
         cv2.imshow("Scanned", imutils.resize(warped, height=650))
         cv2.waitKey(0)
 
@@ -166,29 +162,30 @@ def showImage(img, img_name, width=0, height=0):
         cv2.imshow(img_name, img)
 
 
-def getLines(edges):
+def getLines(img,edges):
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
-    # for rho, theta in lines[0]:
-    #     a = np.cos(theta)
-    #     b = np.sin(theta)
-    #     x0 = a * rho
-    #     y0 = b * rho
-    #     x1 = int(x0 + 1000 * (-b))
-    #     y1 = int(y0 + 1000 * (a))
-    #     x2 = int(x0 - 1000 * (-b))
-    #     y2 = int(y0 - 1000 * (a))
+    for rho, theta in lines[0]:
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a * rho
+        y0 = b * rho
+        x1 = int(x0 + 1000 * (-b))
+        y1 = int(y0 + 1000 * (a))
+        x2 = int(x0 - 1000 * (-b))
+        y2 = int(y0 - 1000 * (a))
 
-    # cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+    cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
-    return lines
+    return img, lines
 
 
-def getLinesP(edges, theta, threshold, minLineLength, maxLineGap):
-    showImage(edges, "Edges")
+def getLinesP(img, edges, theta=np.pi/180, threshold=1, minLineLength=100, maxLineGap=10):
     lines = cv2.HoughLinesP(edges, 1, theta, threshold, minLineLength, maxLineGap)
-    # for x1, y1, x2, y2 in lines[0]:
-    # cv2.line(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    return lines
+
+    for x1, y1, x2, y2 in lines[0]:
+        cv2.line(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    return img, lines
 
 
 def getStoreNameFromPic(img, kernel, dil_it, erode_it):

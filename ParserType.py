@@ -16,7 +16,9 @@ import cv2
 import imutils
 
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\b.bernaerdts\\AppData\\Local\\Tesseract-OCR\\tesseract.exe'
-#pytesseract.pytesseract.tesseract_cmd =
+
+
+# pytesseract.pytesseract.tesseract_cmd =
 
 
 # Gen_parser GodClass
@@ -48,17 +50,16 @@ class Colruyt_parser(Gen_parser):
 
     def main(self):
         img = self.img
-        img2 = self.img_temp  # cv2.cvtColor(self.img_temp,cv2.COLOR_BGR2GRAY)
+        img2 = self.img_temp
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        edge = cv2.Canny(gray,25,200)
+        edge = cv2.Canny(gray, 50, 200)
 
-        img,lines = getLinesP(img,edge)
+        img, lines = getLinesP(img, edge, theta=np.pi/360,threshold=10,minLineLength=10,maxLineGap=20)
         print(len(lines))
 
-        showImage(img, "Progress")
-        showImage(edge, "Edge",height=800)
-        showImage(gray, "gray")
+        showImage(edge, "Edge")
+        showImage(img, "Gamma Adjust")
 
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -129,8 +130,8 @@ class rectangle_parser(Gen_parser):
         warped = (warped > T).astype("uint8") * 255
 
         # show the original and scanned images
-        #print("STEP 3: Apply perspective transform")
-        #cv2.imshow("Original", imutils.resize(orig, height=650))
+        # print("STEP 3: Apply perspective transform")
+        # cv2.imshow("Original", imutils.resize(orig, height=650))
         cv2.imshow("Scanned", imutils.resize(warped, height=650))
         cv2.waitKey(0)
 
@@ -162,7 +163,7 @@ def showImage(img, img_name, width=0, height=0):
         cv2.imshow(img_name, img)
 
 
-def getLines(img,edges):
+def getLines(img, edges):
     lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
     for rho, theta in lines[0]:
         a = np.cos(theta)
@@ -179,10 +180,11 @@ def getLines(img,edges):
     return img, lines
 
 
-def getLinesP(img, edges, theta=np.pi/180, threshold=1, minLineLength=100, maxLineGap=10):
-    lines = cv2.HoughLinesP(edges, 1, theta, threshold, minLineLength, maxLineGap)
+def getLinesP(img, edges, rho=1, theta=np.pi / 180, threshold=1, minLineLength=100, maxLineGap=10):
+    lines = cv2.HoughLinesP(edges, rho, theta, threshold, minLineLength, maxLineGap)
 
-    for x1, y1, x2, y2 in lines[0]:
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
         cv2.line(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     return img, lines
@@ -211,3 +213,66 @@ def getName(image):
 
     return store_name
 
+
+def getLengthOfCoords(x1, x2, y1, y2):
+    length = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return length
+
+
+def convertScale(img, alpha, beta):
+    """Add bias and gain to an image with saturation arithmetics. Unlike
+    cv2.convertScaleAbs, it does not take an absolute value, which would lead to
+    nonsensical results (e.g., a pixel at 44 with alpha = 3 and beta = -210
+    becomes 78 with OpenCV, when in fact it should become 0).
+    """
+
+    new_img = img * alpha + beta
+    new_img[new_img < 0] = 0
+    new_img[new_img > 255] = 255
+    return new_img.astype(np.uint8)
+
+
+# Automatic brightness and contrast optimization with optional histogram clipping
+def automatic_brightness_and_contrast(image, clip_hist_percent=25):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Calculate grayscale histogram
+    hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+    hist_size = len(hist)
+
+    # Calculate cumulative distribution from the histogram
+    accumulator = []
+    accumulator.append(float(hist[0]))
+    for index in range(1, hist_size):
+        accumulator.append(accumulator[index - 1] + float(hist[index]))
+
+    # Locate points to clip
+    maximum = accumulator[-1]
+    clip_hist_percent *= (maximum / 100.0)
+    clip_hist_percent /= 2.0
+
+    # Locate left cut
+    minimum_gray = 0
+    while accumulator[minimum_gray] < clip_hist_percent:
+        minimum_gray += 1
+
+    # Locate right cut
+    maximum_gray = hist_size - 1
+    while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
+        maximum_gray -= 1
+
+    # Calculate alpha and beta values
+    alpha = 255 / (maximum_gray - minimum_gray)
+    beta = -minimum_gray * alpha
+
+    '''
+    # Calculate new histogram with desired range and show histogram 
+    new_hist = cv2.calcHist([gray],[0],None,[256],[minimum_gray,maximum_gray])
+    plt.plot(hist)
+    plt.plot(new_hist)
+    plt.xlim([0,256])
+    plt.show()
+    '''
+
+    auto_result = convertScale(image, alpha=alpha, beta=beta)
+    return (auto_result, alpha, beta)

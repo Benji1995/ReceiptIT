@@ -5,6 +5,7 @@
 import re
 import ParserType
 from ParserType import *
+from langdetect import detect
 
 # load the image and compute the ratio of the old height
 # to the new height, clone it, and resize it
